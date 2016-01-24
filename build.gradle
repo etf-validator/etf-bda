@@ -1,0 +1,28 @@
+plugins {
+    id 'net.researchgate.release' version '2.2.1'
+}
+apply from: 'src/main/gradle/ii-bda.gradle'
+
+
+group='de.interactive_instruments.bda'
+description='interactive instruments build and deployment plugin for gradle'
+
+jar {
+    from('src/main/gradle') {
+        include '*.gradle'
+    }
+}
+
+// Overwrite uploadArchives with the plugins releases repo (restricted to ii developers)
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "http://services.interactive-instruments.de/etfdev-af/plugins-releases-local") {
+                authentication(userName: gradle.rootProject.ext.r_user, password: gradle.rootProject.ext.r_pwd)
+            }
+            snapshotRepository(url: "http://services.interactive-instruments.de/etfdev-af/plugins-snapshots-local") {
+                authentication(userName: gradle.rootProject.ext.r_user, password: gradle.rootProject.ext.r_pwd)
+            }
+        }
+    }
+}
