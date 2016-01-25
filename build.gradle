@@ -11,6 +11,8 @@ description='interactive instruments build and deployment plugin for gradle'
 jar {
     from('src/main/gradle') {
         include '*.gradle'
+        include 'apache2-license-header.txt'
+        include 'checkstyle.xml'
     }
 }
 
