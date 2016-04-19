@@ -50,7 +50,7 @@ FAILURE: Build failed with an exception.
 * What went wrong:
 Execution failed for task ':spotlessJavaCheck'.
 > Format violations were found. Run 'gradlew spotlessApply' to fix them.
-      src/main/java/de/whatever.java
+	src/main/java/de/whatever.java
 ```
 
 These can be formatted by running:

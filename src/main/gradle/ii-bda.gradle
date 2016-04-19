@@ -277,6 +277,12 @@ allprojects {
     ////////////////////////////////////////
     spotless {
         java {
+            target project.fileTree(project.rootDir) {
+              include 'src/main/java/de/interactive_instruments/**/*.java'
+              include 'src/test/java/de/interactive_instruments/**/*.java'
+              exclude '**/package-info.java'
+              exclude 'apache2-license-header.java'
+            }
             licenseHeaderFile rootProject.file('./build/gradle/apache2-license-header.java')
             importOrder(['java', 'javax', 'com', 'org', 'de'])
             eclipseFormatFile rootProject.file('./build/gradle/etf.eclipseformat.xml')
