@@ -114,8 +114,6 @@ allprojects {
     assert gradle.rootProject.ext.r_user != null
     assert gradle.rootProject.ext.r_pwd != null
 
-    println "I'm $project.name"
-
     repositories {
         // First get modified external libraries
         maven {
