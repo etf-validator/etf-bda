@@ -114,6 +114,13 @@ allprojects {
     assert gradle.rootProject.ext.r_user != null
     assert gradle.rootProject.ext.r_pwd != null
 
+    ext.spotlessJavaSrcFiles = project.fileTree(project.projectDir) {
+        include 'src/main/java/de/interactive_instruments/**/*.java'
+        include 'src/test/java/de/interactive_instruments/**/*.java'
+        exclude '**/package-info.java'
+        exclude 'apache2-license-header.java'
+    }
+
     repositories {
         // First get modified external libraries
         maven {
@@ -275,12 +282,7 @@ allprojects {
     apply plugin: com.diffplug.gradle.spotless.SpotlessPlugin
     spotless {
         java {
-            target project.fileTree(project.rootDir) {
-              include 'src/main/java/de/interactive_instruments/**/*.java'
-              include 'src/test/java/de/interactive_instruments/**/*.java'
-              exclude '**/package-info.java'
-              exclude 'apache2-license-header.java'
-            }
+            target spotlessJavaSrcFiles
             licenseHeaderFile rootProject.file('./build/gradle/apache2-license-header.java')
             importOrder(['java', 'javax', 'com', 'org', 'de'])
             eclipseFormatFile rootProject.file('./build/gradle/etf.eclipseformat.xml')
