@@ -40,9 +40,6 @@ buildscript {
     }
 }
 
-apply plugin: net.researchgate.release.ReleasePlugin
-apply plugin: com.diffplug.gradle.spotless.SpotlessPlugin
-
 ext.versionFile = rootProject.file("./version.properties")
 
 // Set and check project version
@@ -111,11 +108,13 @@ allprojects {
     ext.versionBuildNumber = gradle.rootProject.ext.versionBuildNumber
     assert ext.versionBuildNumber != null
 
-    ext.repo = org.ajoberstar.grgit.Grgit.open(file('.'))
+    ext.repo = org.ajoberstar.grgit.Grgit.open(file(project.rootDir))
     assert ext.repo != null
 
     assert gradle.rootProject.ext.r_user != null
     assert gradle.rootProject.ext.r_pwd != null
+
+    println "I'm $project.name"
 
     repositories {
         // First get modified external libraries
@@ -275,6 +274,7 @@ allprojects {
     ////////////////////////////////////////
     // CODE FORMATTING AND LICENSE HEADER //
     ////////////////////////////////////////
+    apply plugin: com.diffplug.gradle.spotless.SpotlessPlugin
     spotless {
         java {
             target project.fileTree(project.rootDir) {
@@ -308,6 +308,7 @@ allprojects {
     ///////////////
     // RELEASING //
     ///////////////
+    apply plugin: net.researchgate.release.ReleasePlugin
     release {
         ext.snapshotSuffix = ""
         failOnCommitNeeded = true
