@@ -1,11 +1,11 @@
 /**
- * Copyright 2016 interactive instruments GmbH
+ * Copyright 2010-2016 interactive instruments GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,9 +19,8 @@ import java.util.regex.Matcher
 /**
  * etf build and deployment helper for gradle
  *
- * @author herrmann at interactive-instruments.de
+ * @author J. Herrmann ( herrmann <aT) interactive-instruments (doT> de )
  */
-
 println 'ETF-BDA: Applying ii BDA gradle script to the project'
 
 buildscript {
@@ -32,14 +31,17 @@ buildscript {
         }
     }
     dependencies {
-        classpath 'net.researchgate:gradle-release:2.3.4'
-        classpath "gradle.plugin.nl.javadude.gradle.plugins:license-gradle-plugin:0.12.1"
+        // Release plugin
+        classpath 'net.researchgate:gradle-release:2.3.5'
+        // Code formatting and license headers plugin
+        classpath 'com.diffplug.gradle.spotless:spotless:1.3.2'
+        // Git plugin (to get revision number)
+        classpath 'org.ajoberstar:grgit:1.1.0'
     }
 }
 
-apply plugin: 'net.researchgate.release'
-apply plugin: "com.github.hierynomus.license"
-
+apply plugin: net.researchgate.release.ReleasePlugin
+apply plugin: com.diffplug.gradle.spotless.SpotlessPlugin
 
 ext.versionFile = rootProject.file("./version.properties")
 
@@ -58,14 +60,22 @@ if (versionProperties.version == null) {
     throw new GradleException("Property version not set in file version.properties!")
 }
 
+if (hasProperty("teamcity")) {
+    ext.versionBuildNumber = teamcity["build.number"]
+} else if (System.getenv("BUILD_NUMBER")) {
+    ext.versionBuildNumber = System.getenv("BUILD_NUMBER")
+} else {
+    ext.versionBuildNumber = '0'
+}
+
 def sTasks = project.gradle.startParameter.taskNames
 if (versionProperties.version.toLowerCase().contains("snapshot")) {
-    if(sTasks.contains('release') || sTasks.contains('runBuildTasks')) {
-        // First case applies when you call release taks, second one is one of the tasks
-        // that are executed in a NEW gradle instance
+    if (sTasks.contains('release') || sTasks.contains('runBuildTasks')) {
+        // First case applies when you call release taks, second one is one of
+        // the tasks that are executed in a NEW gradle instance
         println "ETF-BDA: Ignoring SNAPSHOT handling during RELEASE task execution."
         ext.snapshotSuffix = ""
-    }else{
+    } else {
         ext.snapshotSuffix = "-SNAPSHOT"
     }
 } else {
@@ -84,30 +94,26 @@ ext.r_pwd = project.getProperty("ii.etfdev.repo.password")
 
 println "ETF-BDA: Authenticating will be done as user ${ext.r_user}"
 
-if (project.hasProperty("ii.etfdev.quality.reports")) {
-
-}
-ext.qualityReports = project.hasProperty("ii.etfdev.quality.reports") &&
-        project.getProperty("ii.etfdev.quality.reports")=="true"
+ext.qualityReports = project.hasProperty("etf.dev.quality.reports") &&
+        project.getProperty("etf.dev.quality.reports") == "true"
 
 allprojects {
 
     apply plugin: 'java'
     apply plugin: 'maven'
 
-    apply plugin: 'checkstyle'
-    apply plugin: 'pmd'
-    apply plugin: 'findbugs'
-
-    if(rootProject.qualityReports) {
-        apply plugin: 'jacoco'
-        apply plugin: 'jdepend'
-    }
-
     version = versionProperties.version
     assert version != null
+
     ext.snapshotSuffix = gradle.rootProject.ext.snapshotSuffix
     assert ext.snapshotSuffix != null
+
+    ext.versionBuildNumber = gradle.rootProject.ext.versionBuildNumber
+    assert ext.versionBuildNumber != null
+
+    ext.repo = org.ajoberstar.grgit.Grgit.open(file('.'))
+    assert ext.repo != null
+
     assert gradle.rootProject.ext.r_user != null
     assert gradle.rootProject.ext.r_pwd != null
 
@@ -128,7 +134,7 @@ allprojects {
             }
         }
         mavenCentral()
-        if(project.snapshotSuffix) {
+        if (project.snapshotSuffix) {
             println "ETF-BDA: Activating local repository for SNAPSHOT version"
             mavenLocal()
 
@@ -139,7 +145,7 @@ allprojects {
                     password gradle.rootProject.ext.r_pwd
                 }
             }
-        }else{
+        } else {
             maven {
                 url "http://services.interactive-instruments.de/etfdev-af/release"
                 credentials {
@@ -153,19 +159,80 @@ allprojects {
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
 
-    checkstyle {
-        ignoreFailures = true
-        toolVersion = "6.14"
-        configFile = rootProject.file('./build/gradle/checkstyle.xml')
+    if (gradle.rootProject.ext.qualityReports) {
+        /////////////////////////////////////
+        // STATIC CODE ANALYSIS - FINDBUGS //
+        /////////////////////////////////////
+        apply plugin: 'findbugs'
+        findbugs {
+            toolVersion = "3.0.1"
+            ignoreFailures = true
+            reportsDir = file("$project.buildDir/reports/findbugs")
+            effort = "max"
+            reportLevel = "high"
+        }
+        findbugsMain {
+            reports {
+                xml.enabled = false
+                html.enabled = true
+            }
+        }
+
+        ////////////////////////////////
+        // STATIC CODE ANALYSIS - PMD //
+        ////////////////////////////////
+        apply plugin: 'pmd'
+        pmd {
+            ignoreFailures = true
+            sourceSets = [sourceSets.main]
+            reportsDir = file("$project.buildDir/reports/pmd")
+        }
+        pmdMain {
+            reports {
+                xml.enabled = false
+                html.enabled = true
+            }
+        }
+
+        ////////////////////////////////////
+        // CODE COVERAGE METRICS - JACOCO //
+        ////////////////////////////////////
+        apply plugin: 'jacoco'
+        jacoco {
+            reportsDir = file("$project.buildDir/reports/jacoco")
+        }
+        jacocoTestReport {
+            reports {
+                xml.enabled = false
+                html.enabled = true
+            }
+        }
+
+        //////////////////////////////////////
+        // DESIGN QUALITY METRICS - JDEPEND //
+        //////////////////////////////////////
+        apply plugin: 'jdepend'
+        jdepend {
+            reportsDir = file("$project.buildDir/reports/jdepend")
+        }
+        jdependMain {
+            reports {
+                xml.enabled false
+                text.enabled true
+            }
+        }
+
+
+        ////////////////////
+        // PROJECT-REPORT //
+        ////////////////////
+        apply plugin: 'project-report'
+
     }
 
-    findbugs {
-        toolVersion = "3.0.1"
-        ignoreFailures = true
-        effort = "max"
-        reportLevel = "high"
-    }
-
+    ////////////
+    // UPLOAD //
+    ////////////
     uploadArchives {
         repositories {
             mavenDeployer {
@@ -179,13 +246,20 @@ allprojects {
         }
     }
 
+    //////////////
+    // MANIFEST //
+    //////////////
     jar.doFirst {
         manifest {
             attributes(
                     'Implementation-Title': project.name,
+                    'Specification-Vendor': 'interactive instruments GmbH',
+                    'Specification-Vendor-Id': 'de.interactive_instruments',
                     'Implementation-Vendor': 'interactive instruments GmbH',
                     'Implementation-Vendor-Id': 'de.interactive_instruments',
                     'Implementation-Version': project.version,
+                    'Implementation-Revision': repo.head().abbreviatedId,
+                    'Implementation-Build': project.versionBuildNumber,
                     'Built-By': gradle.rootProject.ext.r_user,
                     'Build-User': System.getProperty('user.name'),
                     'Build-Host': java.net.InetAddress.getLocalHost().getHostName(),
@@ -198,30 +272,36 @@ allprojects {
         }
     }
 
-    license {
+    ////////////////////////////////////////
+    // CODE FORMATTING AND LICENSE HEADER //
+    ////////////////////////////////////////
+    spotless {
+        java {
+            licenseHeaderFile rootProject.file('./build/gradle/apache2-license-header.java')
+            importOrder(['java', 'javax', 'com', 'org', 'de'])
+            eclipseFormatFile rootProject.file('./build/gradle/etf.eclipseformat.xml')
+            trimTrailingWhitespace()
+            // endWithNewline()
 
-        ext.year = Calendar.getInstance().get(Calendar.YEAR)
-        ext.vendor = 'interactive instruments GmbH'
+            custom 'Lambda fix', { it.replace('} )', '})').replace('} ,', '},') }
+        }
 
-        dryRun = true
-        strictCheck = true
-        useDefaultMappings = true
-        skipExistingHeaders = true
-        header = rootProject.file('./build/gradle/apache2-license-header.txt')
+        format 'groovy', {
+            target '**/*.groovy'
+            licenseHeaderFile rootProject.file('./build/gradle/apache2-license-header.java'), "package "
+        }
 
-        excludes([
-                "**/*.properties",
-                "**/*.png",
-                "**/*.jpeg",
-                "**/*.jpg",
-                "**/*.ico",
-                "**/*.txt",
-                // Minified Javascript
-                "**/*min.js",
-                "**/*.js",
-        ])
+        format 'misc', {
+            target '**/*.md', '**/*.gitignore'
+            indentWithTabs()
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
     }
 
+    ///////////////
+    // RELEASING //
+    ///////////////
     release {
         ext.snapshotSuffix = ""
         failOnCommitNeeded = true
@@ -231,7 +311,7 @@ allprojects {
         failOnUpdateNeeded = true
         revertOnFail = true
         preCommitText = ''
-        preTagCommitMessage = '[RELEASE] Version '
+        preTagCommitMessage = '[RELEASE] :new: Version '
         tagCommitMessage = 'Version '
         newVersionCommitMessage = 'New working version '
         tagTemplate = '${version}'
@@ -245,7 +325,6 @@ allprojects {
         git {
             requireBranch = 'master'
             pushToRemote = 'origin'
-            pushToCurrentBranch = false
         }
     }
 
@@ -255,5 +334,9 @@ allprojects {
 
     install.doLast {
         println "ETF-BDA: Installed version ${version}"
+    }
+
+    uploadArchives.doLast {
+        println "ETF-BDA: Uploaded version ${version}"
     }
 }
