@@ -110,6 +110,7 @@ allprojects {
 
     ext.repo = org.ajoberstar.grgit.Grgit.open(file(project.rootDir))
     assert ext.repo != null
+    ext.repoUrl = ext.repo.remote.list()[0].url
 
     assert gradle.rootProject.ext.r_user != null
     assert gradle.rootProject.ext.r_pwd != null
@@ -245,6 +246,44 @@ allprojects {
                 }
                 repository(url: "http://services.interactive-instruments.de/etfdev-af/release") {
                     authentication(userName: gradle.rootProject.ext.r_user, password: gradle.rootProject.ext.r_pwd)
+                }
+
+                pom.project {
+                    url 'http://interactive-instruments.github.io/etf-webapp'
+
+                    scm {
+                        url = "${project.repoUrl}"
+                        connection = "${project.repoUrl}"
+                        developerConnection = "${project.repoUrl}"
+                    }
+
+                    licenses {
+                        license {
+                            name 'The Apache Software License, Version 2.0'
+                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            distribution 'repo'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id = 'jonherrmann'
+                            organization = 'interactive instruments'
+                        }
+                        developer {
+                            id = 'cportele'
+                            organization = 'interactive instruments'
+                        }
+                        developer {
+                            id = 'jechterhoff'
+                            organization = 'interactive instruments'
+                        }
+                    }
+
+                    properties {
+                        'project.build.sourceEncoding' 'UTF-8'
+                        'project.reporting.outputEncoding' 'UTF-8'
+                    }
                 }
             }
         }
