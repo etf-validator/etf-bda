@@ -96,6 +96,36 @@ ext.qualityReports = project.hasProperty("etf.dev.quality.reports") &&
 
 allprojects {
 
+    // Default lib versions
+    ext {
+      // testCompile group: 'junit', name: 'junit', version: junitVersion
+      junitVersion = '4.11'
+
+      // compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
+      slf4jApiVersion = '1.7.12'
+
+      // compile group: 'org.apache.commons', name: 'commons-lang3', version: commonsLang3Version
+      commonsLang3Version = '3.4'
+
+      // compile group: 'commons-codec', name: 'commons-codec', version: commonsCodecVersion
+      commonsCodecVersion = '1.10'
+
+      // compile group: 'commons-io', name: 'commons-io', version: commonsIoVersion
+      commonsIoVersion = '2.4'
+
+      // compile group: 'xerces', name: 'xercesImpl', version: xercesVersion
+      xercesVersion = '2.11.0.beta'
+
+      // compile group: 'xml-apis', name: 'xml-apis', version: xmlApisVersion
+      xmlApisVersion = '1.4.01'
+
+      // compile group: 'commons-collections', name: 'commons-collections', version: commonsCollectionsVersion
+      commonsCollectionsVersion = '3.2.1'
+
+      // compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: jaxbVersion
+      jaxbVersion = '2.2.11'
+    }
+
     apply plugin: 'java'
     apply plugin: 'maven'
 
