@@ -1,5 +1,7 @@
 # ETF build and deployment plugin helper
 
+[![Latest version](http://img.shields.io/badge/latest%20version-1.0.19-blue.svg)](https://services.interactive-instruments.de//etfdev-af/plugins-releases-local/de/interactive_instruments/bda/etf-bda/1.0.19/etf-bda-1.0.19.jar)
+
 This gradle helper script is used in ETF projects to preconfigure Gradle based Java projects.
 
 The following block must be inserted at the beginning of a build.gradle file:
@@ -18,7 +20,7 @@ buildscript {
 			}}
 	}
 	dependencies {
-		classpath group: 'de.interactive_instruments.bda', name: 'etf-bda', version:'1.0.+'
+		classpath group: 'de.interactive_instruments.bda', name: 'etf-bda', version:'1.0.19'
 	}
 	dependencies {
 		ant.unjar src: configurations.classpath.files.find {it.path.contains('etf')}, dest: 'build/gradle'
