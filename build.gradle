@@ -19,10 +19,10 @@ jar {
 uploadArchives {
 	repositories {
 		mavenDeployer {
-			repository(url: "http://services.interactive-instruments.de/etfdev-af/plugins-releases-local") {
+			repository(url: "https://services.interactive-instruments.de/etfdev-af/plugins-releases-local") {
 				authentication(userName: gradle.rootProject.ext.r_user, password: gradle.rootProject.ext.r_pwd)
 			}
-			snapshotRepository(url: "http://services.interactive-instruments.de/etfdev-af/plugins-snapshots-local") {
+			snapshotRepository(url: "https://services.interactive-instruments.de/etfdev-af/plugins-snapshots-local") {
 				authentication(userName: gradle.rootProject.ext.r_user, password: gradle.rootProject.ext.r_pwd)
 			}
 		}
