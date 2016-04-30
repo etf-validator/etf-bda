@@ -31,19 +31,31 @@ buildscript {
         }
     }
     dependencies {
+
         // Release plugin
         classpath 'net.researchgate:gradle-release:2.3.5'
+
         // Code formatting and license headers plugin
         classpath 'com.diffplug.gradle.spotless:spotless:1.3.2'
-        // Git plugin (to get revision number)
+
+        // Git plugin for version information, repo url, etc
         classpath 'org.ajoberstar:grgit:1.1.0'
+
+        if (project.findProperty("ii.etfdev.quality.reports")=='true') {
+            if(project.hasProperty("versioneye.api_key") ||
+                    System.getenv(VERSIONEYE_API_KEY))
+            {
+                // Monitor dependency information (version, license, security status)
+                classpath 'org.standardout:gradle-versioneye-plugin:1.3.0'
+            }
+        }
     }
 }
 
 final GradleVersion currentGradleVersion = GradleVersion.current()
 final GradleVersion gradle2_13 = GradleVersion.version('2.13')
 if(currentGradleVersion<gradle2_13) {
-  throw new GradleException("Your Gradle version is older than 2.13")
+    throw new GradleException("Your Gradle version is older than 2.13")
 }
 
 ext.versionFile = rootProject.file("./version.properties")
@@ -85,87 +97,81 @@ if (versionProperties.version.toLowerCase().contains("snapshot")) {
     ext.snapshotSuffix = ""
 }
 
-// Check credentials
-if (!project.hasProperty("ii.etfdev.repo.username")) {
-    throw new GradleException("Property ii.etfdev.repo.username not set!")
-}
-if (!project.hasProperty("ii.etfdev.repo.password")) {
-    throw new GradleException("Property ii.etfdev.repo.password not set!")
-}
-ext.r_user = project.getProperty("ii.etfdev.repo.username")
-ext.r_pwd = project.getProperty("ii.etfdev.repo.password")
+// Credentials
+ext.r_user = project.findProperty("ii.etfdev.repo.username") ?: 'etf-public-releases'
+ext.r_pwd = project.findProperty("ii.etfdev.repo.password") ?: 'etf-public-releases'
 
 println "ETF-BDA: Authenticating will be done as user ${ext.r_user}"
 
-ext.qualityReports = project.hasProperty("etf.dev.quality.reports") &&
-        project.getProperty("etf.dev.quality.reports") == "true"
+ext.qualityReports = project.hasProperty("ii.etfdev.quality.reports") &&
+        project.getProperty("ii.etfdev.quality.reports") == "true"
 
 
 task updateReadme << {
-  description 'Replace patterns found in the Readme.md'
+    description 'Replace patterns found in the Readme.md'
 
-  final File readmeFile = rootProject.file("./Readme.md")
-  if (readmeFile.exists()) {
-    final String afRepoUrl = uploadArchives.repositories.mavenDeployer.repository.url
-    // snapshot url needed? uploadArchives.repositories.mavenDeployer.snapshotRepository.url
-    assert afRepoUrl != null
+    final File readmeFile = rootProject.file("./Readme.md")
+    if (readmeFile.exists()) {
+        final String afRepoUrl = uploadArchives.repositories.mavenDeployer.repository.url
+        // snapshot url needed? uploadArchives.repositories.mavenDeployer.snapshotRepository.url
+        assert afRepoUrl != null
 
-    // Prefer zips
-    final String file = uploadArchives.artifacts.files.sort().reverse()[0].name
+        // Prefer zips
+        final String file = uploadArchives.artifacts.files.sort()[0].name
 
-    final String baseUrl = afRepoUrl +"/"+ rootProject.group.replace('.','/') +
-      "/"+ rootProject.name +"/";
+        final String baseUrl = afRepoUrl +"/"+ rootProject.group.replace('.','/') +
+                "/"+ rootProject.name +"/";
 
-    final String completeUrl = baseUrl + rootProject.version +"/"+ file
+        final String completeUrl = baseUrl + rootProject.version +"/"+ file
 
-    final String latestVersionShield = '[![Latest version]'+
-      '(http://img.shields.io/badge/latest%20version-'+rootProject.version+'-blue.svg)]'+
-      '('+completeUrl+')'
+        final String latestVersionShield = '[![Latest version]'+
+                '(http://img.shields.io/badge/latest%20version-'+rootProject.version+'-blue.svg)]'+
+                '('+completeUrl+')'
 
-    String readmeText = readmeFile.text
-    readmeText = readmeText.replaceFirst(
-      /\[\!\[Latest version\]\(http:\/\/img\.shields\.io\/badge\/latest\%20version-.*/ ,
-        latestVersionShield)
-    readmeFile.write(readmeText)
-  }
+        String readmeText = readmeFile.text
+        readmeText = readmeText.replaceFirst(
+                /\[\!\[Latest version\]\(http:\/\/img\.shields\.io\/badge\/latest\%20version-.*/ ,
+                latestVersionShield)
+        readmeFile.write(readmeText)
+    }
 }
 
 allprojects {
 
     // Default lib versions
     ext {
-      // testCompile group: 'junit', name: 'junit', version: etf_junitTestVersion
-      etf_junitTestVersion = '4.12'
+        // testCompile group: 'junit', name: 'junit', version: etf_junitTestVersion
+        etf_junitTestVersion = '4.12'
 
-      // testCompile group: 'ch.qos.logback', name: 'logback-classic', version: etf_logbackVersion
-      etf_logbackVersion = '1.1.7'
+        // testCompile group: 'ch.qos.logback', name: 'logback-classic', version: etf_logbackVersion
+        etf_logbackVersion = '1.1.7'
 
-      // compile group: 'org.slf4j', name: 'slf4j-api', version: etf_slf4jApiVersion
-      etf_slf4jApiVersion = '1.7.20'
+        // compile group: 'org.slf4j', name: 'slf4j-api', version: etf_slf4jApiVersion
+        etf_slf4jApiVersion = '1.7.20'
 
-      // compile group: 'org.apache.commons', name: 'commons-lang3', version: etf_commonsLang3Version
-      etf_commonsLang3Version = '3.4'
+        // compile group: 'org.apache.commons', name: 'commons-lang3', version: etf_commonsLang3Version
+        etf_commonsLang3Version = '3.4'
 
-      // compile group: 'commons-codec', name: 'commons-codec', version: etf_commonsCodecVersion
-      etf_commonsCodecVersion = '1.10'
+        // compile group: 'commons-codec', name: 'commons-codec', version: etf_commonsCodecVersion
+        etf_commonsCodecVersion = '1.10'
 
-      // compile group: 'commons-io', name: 'commons-io', version: etf_commonsIoVersion
-      etf_commonsIoVersion = '2.5'
+        // compile group: 'commons-io', name: 'commons-io', version: etf_commonsIoVersion
+        etf_commonsIoVersion = '2.5'
 
-      // compile group: 'commons-collections', name: 'commons-collections', version: etf_commonsCollectionsVersion
-      etf_commonsCollectionsVersion = '3.2.2'
+        // compile group: 'commons-collections', name: 'commons-collections', version: etf_commonsCollectionsVersion
+        etf_commonsCollectionsVersion = '3.2.2'
 
-      // compile group: 'xerces', name: 'xercesImpl', version: etf_xercesVersion
-      etf_xercesVersion = '2.11.0.beta'
+        // compile group: 'xerces', name: 'xercesImpl', version: etf_xercesVersion
+        etf_xercesVersion = '2.11.0.beta'
 
-      // compile group: 'xml-apis', name: 'xml-apis', version: etf_xmlApisVersion
-      etf_xmlApisVersion = '1.4.01'
+        // compile group: 'xml-apis', name: 'xml-apis', version: etf_xmlApisVersion
+        etf_xmlApisVersion = '1.4.01'
 
-      // compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: etf_jaxbVersion
-      etf_jaxbVersion = '2.2.11'
+        // compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: etf_jaxbVersion
+        etf_jaxbVersion = '2.2.11'
 
-      // compile group: 'de.interactive_instruments', name: 'ii-commons-util', version: etf_iiCommonsVersion
-      etf_iiCommonsVersion = '1.3.0'
+        // compile group: 'de.interactive_instruments', name: 'ii-commons-util', version: etf_iiCommonsVersion
+        etf_iiCommonsVersion = '1.3.0'
     }
 
     apply plugin: 'java'
@@ -299,12 +305,19 @@ allprojects {
             }
         }
 
-
-        ////////////////////
-        // PROJECT-REPORT //
-        ////////////////////
-        apply plugin: 'project-report'
-
+        //////////////////////////////////////
+        // DEPENDENCY CHECKS - VersionEye //
+        //////////////////////////////////////
+        if(project.hasProperty("versioneye.api_key") ||
+                System.getenv(VERSIONEYE_API_KEY))
+        {
+            apply plugin: org.standardout.gradle.plugin.versioneye.VersionEyePlugin
+            versioneye {
+                dependencies=declared
+                includePlugins=false
+                exclude 'testCompile', 'testRuntime'
+            }
+        }
     }
 
     ////////////
@@ -432,7 +445,7 @@ allprojects {
         preCommitText = ''
         preTagCommitMessage = '[RELEASE] :new: Version '
         tagCommitMessage = 'Version '
-        newVersionCommitMessage = 'New working version '
+        newVersionCommitMessage = ':arrow_up: New working version '
         tagTemplate = '${version}'
         versionPropertyFile = 'version.properties'
         versionProperties = []
