@@ -246,6 +246,13 @@ allprojects {
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
 
+    if(project.hasProperty("compileJava")) {
+      [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+    }
+    if(project.hasProperty("compileGroovy")) {
+      [compileGroovy, compileGroovy]*.options*.encoding = 'UTF-8'
+    }
+
     if (gradle.rootProject.ext.qualityReports) {
         /////////////////////////////////////
         // STATIC CODE ANALYSIS - FINDBUGS //
