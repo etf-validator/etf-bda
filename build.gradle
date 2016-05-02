@@ -1,3 +1,4 @@
+ext.'versioneye.api_key'=null
 apply from: 'src/main/gradle/ii-bda.gradle'
 
 group='de.interactive_instruments.bda'

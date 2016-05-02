@@ -42,8 +42,8 @@ buildscript {
         classpath 'org.ajoberstar:grgit:1.1.0'
 
         if (project.findProperty("ii.etfdev.quality.reports")=='true') {
-            if(project.hasProperty("versioneye.api_key") ||
-                    System.getenv(VERSIONEYE_API_KEY))
+            if(project.findProperty("versioneye.api_key")!=null ||
+                    System.getenv("VERSIONEYE_API_KEY")!=null)
             {
                 // Monitor dependency information (version, license, security status)
                 classpath 'org.standardout:gradle-versioneye-plugin:1.3.0'
@@ -193,6 +193,10 @@ allprojects {
     assert gradle.rootProject.ext.r_user != null
     assert gradle.rootProject.ext.r_pwd != null
 
+    ext.updateVersionEye = (project.findProperty("versioneye.api_key")!=null ||
+            System.getenv("VERSIONEYE_API_KEY")!=null) &&
+            gradle.rootProject.ext.qualityReports
+
     ext.spotlessJavaSrcFiles = project.fileTree(project.projectDir) {
         include 'src/main/java/de/interactive_instruments/**/*.java'
         include 'src/test/java/de/interactive_instruments/**/*.java'
@@ -308,8 +312,7 @@ allprojects {
         //////////////////////////////////////
         // DEPENDENCY CHECKS - VersionEye //
         //////////////////////////////////////
-        if(project.hasProperty("versioneye.api_key") ||
-                System.getenv(VERSIONEYE_API_KEY))
+        if(project.updateVersionEye)
         {
             apply plugin: org.standardout.gradle.plugin.versioneye.VersionEyePlugin
             versioneye {
@@ -463,6 +466,10 @@ allprojects {
     if (tasks.findByPath('uploadArchives') != null) {
         beforeReleaseBuild.dependsOn updateReadme
         afterReleaseBuild.dependsOn uploadArchives
+        if(project.updateVersionEye) {
+            versionEyeUpdate.shouldRunAfter uploadArchives
+            afterReleaseBuild.dependsOn versionEyeUpdate
+        }
     }
 
     install.doLast {
