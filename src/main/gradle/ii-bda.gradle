@@ -167,6 +167,9 @@ allprojects {
         // compile group: 'xml-apis', name: 'xml-apis', version: etf_xmlApisVersion
         etf_xmlApisVersion = '1.4.01'
 
+        // compile group: 'net.sf.saxon', name: 'Saxon-HE', version: etf_saxonHe
+        etf_saxonHe = '9.7.0-4'
+
         // compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: etf_jaxbVersion
         etf_jaxbVersion = '2.2.11'
 
