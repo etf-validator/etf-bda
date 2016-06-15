@@ -84,7 +84,10 @@ if (hasProperty("teamcity")) {
 }
 
 def sTasks = project.gradle.startParameter.taskNames
-if (versionProperties.version.toLowerCase().contains("snapshot")) {
+def versionLower = versionProperties.version.toUpperCase()
+if (versionLower.contains("SNAPSHOT") || versionLower.contains("ALPHA.") || 
+    versionLower.contains("BETA.") || versionLower.contains("RC.") )
+{
     if (sTasks.contains('release') || sTasks.contains('runBuildTasks')) {
         // First case applies when you call release taks, second one is one of
         // the tasks that are executed in a NEW gradle instance
