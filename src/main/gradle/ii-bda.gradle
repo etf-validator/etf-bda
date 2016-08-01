@@ -21,7 +21,7 @@ import java.util.regex.Matcher
  *
  * @author J. Herrmann ( herrmann <aT) interactive-instruments (doT> de )
  */
-println 'ETF-BDA: Applying ii BDA gradle script to the project'
+println 'ETF-BDA: Applying ii BDA gradle script 1.0.23 to the project'
 
 buildscript {
     repositories {
@@ -33,46 +33,68 @@ buildscript {
     dependencies {
 
         // Release plugin
-        classpath 'net.researchgate:gradle-release:2.3.5'
+        classpath 'net.researchgate:gradle-release:2.4.0'
 
         // Code formatting and license headers plugin
-        classpath 'com.diffplug.gradle.spotless:spotless:1.3.2'
+        classpath 'com.diffplug.gradle.spotless:spotless:1.3.3'
 
         // Git plugin for version information, repo url, etc
-        classpath 'org.ajoberstar:grgit:1.1.0'
+        classpath 'org.ajoberstar:grgit:1.7.0'
 
         if (project.findProperty("ii.etfdev.quality.reports")=='true') {
             if(project.findProperty("versioneye.api_key")!=null ||
                     System.getenv("VERSIONEYE_API_KEY")!=null)
             {
                 // Monitor dependency information (version, license, security status)
-                classpath 'org.standardout:gradle-versioneye-plugin:1.3.0'
+                classpath 'org.standardout:gradle-versioneye-plugin:1.4.0'
             }
         }
     }
 }
 
+// Check gradle version
+/////////////////////////////////////
+
 final GradleVersion currentGradleVersion = GradleVersion.current()
-final GradleVersion gradle2_13 = GradleVersion.version('2.13')
-if(currentGradleVersion<gradle2_13) {
-    throw new GradleException("Your Gradle version is older than 2.13")
+final GradleVersion requiredVersion = GradleVersion.version('2.14.1')
+if(currentGradleVersion<requiredVersion) {
+    throw new GradleException("ETF-BDA: The configured Gradle version "+currentGradleVersion+
+            " in the gradle-wrapper.properties file "+
+            " is too old. Required is at least "+requiredVersion.toString())
 }
+
+// Configure semantic version
+/////////////////////////////////////
 
 ext.versionFile = rootProject.file("./version.properties")
 
 // Set and check project version
 if (!ext.versionFile.exists()) {
-    throw new GradleException("Required file version.properties does not exist! Create it!")
+    throw new GradleException("ETF-BDA: required file version.properties does not exist! Create it!")
 }
 if (!ext.versionFile.canRead()) {
-    throw new GradleException("Can not read file version.properties ! Check file permissions!")
+    throw new GradleException("ETF-BDA: can not read file version.properties ! Check file permissions!")
 }
-def versionProperties = new Properties()
-ext.versionFile.withInputStream {
-    stream -> versionProperties.load(stream)
+ext.semversion = null
+if( System.getenv("RELEASE_VERSION") ) {
+  ext.semversion = System.getenv("RELEASE_VERSION")
+}else{
+  def versionProperties = new Properties()
+  ext.versionFile.withInputStream {
+      stream -> versionProperties.load(stream)
+  }
+  ext.semversion = versionProperties.version
 }
-if (versionProperties.version == null) {
-    throw new GradleException("Property version not set in file version.properties!")
+
+if (ext.semversion == null) {
+    throw new GradleException("ETF-BDA: property version not set in file version.properties or RELEASE_VERSION environment variable not defined!")
+}
+ext.semversion = ext.semversion.toUpperCase()
+
+ext.nextVersion = null
+if( System.getenv("RELEASE_NEXT_VERSION") ) {
+    ext.nextVersion = System.getenv("RELEASE_NEXT_VERSION").toUpperCase()
+
 }
 
 if (hasProperty("teamcity")) {
@@ -84,9 +106,7 @@ if (hasProperty("teamcity")) {
 }
 
 def sTasks = project.gradle.startParameter.taskNames
-def versionLower = versionProperties.version.toUpperCase()
-if (versionLower.contains("SNAPSHOT") || versionLower.contains("ALPHA.") || 
-    versionLower.contains("BETA.") || versionLower.contains("RC.") )
+if (ext.semversion.contains("SNAPSHOT"))
 {
     if (sTasks.contains('release') || sTasks.contains('runBuildTasks')) {
         // First case applies when you call release taks, second one is one of
@@ -108,7 +128,6 @@ println "ETF-BDA: Authenticating will be done as user ${ext.r_user}"
 
 ext.qualityReports = project.hasProperty("ii.etfdev.quality.reports") &&
         project.getProperty("ii.etfdev.quality.reports") == "true"
-
 
 task updateReadme << {
     description 'Replace patterns found in the Readme.md'
@@ -150,7 +169,7 @@ allprojects {
         etf_logbackVersion = '1.1.7'
 
         // compile group: 'org.slf4j', name: 'slf4j-api', version: etf_slf4jApiVersion
-        etf_slf4jApiVersion = '1.7.20'
+        etf_slf4jApiVersion = '1.7.21'
 
         // compile group: 'org.apache.commons', name: 'commons-lang3', version: etf_commonsLang3Version
         etf_commonsLang3Version = '3.4'
@@ -171,7 +190,7 @@ allprojects {
         etf_xmlApisVersion = '1.4.01'
 
         // compile group: 'net.sf.saxon', name: 'Saxon-HE', version: etf_saxonHe
-        etf_saxonHe = '9.7.0-4'
+        etf_saxonHe = '9.7.0-7'
 
         // compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: etf_jaxbVersion
         etf_jaxbVersion = '2.2.11'
@@ -183,8 +202,12 @@ allprojects {
     apply plugin: 'java'
     apply plugin: 'maven'
 
-    version = versionProperties.version
+    version = ext.semversion
     assert version != null
+
+    if(ext.nextVersion != null) {
+        project.setProperty("release.newVersion", ext.nextVersion)
+    }
 
     ext.snapshotSuffix = gradle.rootProject.ext.snapshotSuffix
     assert ext.snapshotSuffix != null
@@ -450,6 +473,9 @@ allprojects {
     // RELEASING //
     ///////////////
     apply plugin: net.researchgate.release.ReleasePlugin
+    if( System.getenv("DEVELOPMENT_VERSION") ) {
+      project.ext.set("release.newVersion", System.getenv("DEVELOPMENT_VERSION"))
+    }
     release {
         ext.snapshotSuffix = ""
         failOnCommitNeeded = true
@@ -460,7 +486,7 @@ allprojects {
         revertOnFail = true
         preCommitText = ''
         preTagCommitMessage = '[RELEASE] :new: Version '
-        tagCommitMessage = 'Version '
+        tagCommitMessage = 'BN-${project.versionBuildNumber}, V-'
         newVersionCommitMessage = ':arrow_up: New working version '
         tagTemplate = '${version}'
         versionPropertyFile = 'version.properties'
