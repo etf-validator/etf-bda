@@ -15,13 +15,15 @@
  */
 
 import java.util.regex.Matcher
+import org.gradle.internal.os.OperatingSystem;
+
 
 /**
  * etf build and deployment helper for gradle
  *
  * @author J. Herrmann ( herrmann <aT) interactive-instruments (doT> de )
  */
-println 'ETF-BDA: Applying ii BDA gradle script 1.0.23 to the project'
+println 'ETF-BDA: Applying ii BDA gradle script 1.0.24 to the project'
 
 buildscript {
     repositories {
@@ -33,13 +35,13 @@ buildscript {
     dependencies {
 
         // Release plugin
-        classpath 'net.researchgate:gradle-release:2.4.0'
+        classpath 'net.researchgate:gradle-release:2.5.0'
 
         // Code formatting and license headers plugin
         classpath 'com.diffplug.gradle.spotless:spotless:1.3.3'
 
         // Git plugin for version information, repo url, etc
-        classpath 'org.ajoberstar:grgit:1.7.0'
+        classpath 'org.ajoberstar:grgit:1.8.0'
 
         if (project.findProperty("ii.etfdev.quality.reports")=='true') {
             if(project.findProperty("versioneye.api_key")!=null ||
@@ -56,7 +58,7 @@ buildscript {
 /////////////////////////////////////
 
 final GradleVersion currentGradleVersion = GradleVersion.current()
-final GradleVersion requiredVersion = GradleVersion.version('2.14.1')
+final GradleVersion requiredVersion = GradleVersion.version('3.4')
 if(currentGradleVersion<requiredVersion) {
     throw new GradleException("ETF-BDA: The configured Gradle version "+currentGradleVersion+
             " in the gradle-wrapper.properties file "+
@@ -129,8 +131,10 @@ println "ETF-BDA: Authenticating will be done as user ${ext.r_user}"
 ext.qualityReports = project.hasProperty("ii.etfdev.quality.reports") &&
         project.getProperty("ii.etfdev.quality.reports") == "true"
 
-task updateReadme << {
-    description 'Replace patterns found in the Readme.md'
+task updateReadme {
+  description 'Replace patterns found in the Readme.md'
+
+  doLast {
 
     final File readmeFile = rootProject.file("./Readme.md")
     if (readmeFile.exists()) {
@@ -156,6 +160,15 @@ task updateReadme << {
                 latestVersionShield)
         readmeFile.write(readmeText)
     }
+  }
+}
+
+task installGitHooks(type: Copy) {
+    from new File(rootProject.rootDir, './build/gradle/pre-commit') {
+    }
+    into(new File(rootProject.rootDir, '.git/hooks')) {
+        fileMode 0555
+    }
 }
 
 allprojects {
@@ -166,13 +179,13 @@ allprojects {
         etf_junitTestVersion = '4.12'
 
         // testCompile group: 'ch.qos.logback', name: 'logback-classic', version: etf_logbackVersion
-        etf_logbackVersion = '1.1.7'
+        etf_logbackVersion = '1.2.1'
 
         // compile group: 'org.slf4j', name: 'slf4j-api', version: etf_slf4jApiVersion
-        etf_slf4jApiVersion = '1.7.21'
+        etf_slf4jApiVersion = '1.7.24'
 
         // compile group: 'org.apache.commons', name: 'commons-lang3', version: etf_commonsLang3Version
-        etf_commonsLang3Version = '3.4'
+        etf_commonsLang3Version = '3.5'
 
         // compile group: 'commons-codec', name: 'commons-codec', version: etf_commonsCodecVersion
         etf_commonsCodecVersion = '1.10'
@@ -190,13 +203,13 @@ allprojects {
         etf_xmlApisVersion = '1.4.01'
 
         // compile group: 'net.sf.saxon', name: 'Saxon-HE', version: etf_saxonHe
-        etf_saxonHe = '9.7.0-7'
+        etf_saxonHe = '9.7.0-15'
 
         // compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: etf_jaxbVersion
         etf_jaxbVersion = '2.2.11'
 
         // compile group: 'de.interactive_instruments', name: 'ii-commons-util', version: etf_iiCommonsVersion
-        etf_iiCommonsVersion = '1.3.0'
+        etf_iiCommonsVersion = '2.0.0'
     }
 
     apply plugin: 'java'
@@ -373,6 +386,8 @@ allprojects {
                 }
 
                 pom.project {
+                    inceptionYear '2010'
+
                     url 'http://interactive-instruments.github.io/etf-webapp'
 
                     scm {
@@ -517,5 +532,9 @@ allprojects {
 
     uploadArchives.doLast {
         println "ETF-BDA: Uploaded version ${version}"
+    }
+
+    if (!OperatingSystem.current().isWindows()) {
+        build.dependsOn installGitHooks
     }
 }
