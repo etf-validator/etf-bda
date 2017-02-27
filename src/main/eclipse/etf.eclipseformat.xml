@@ -3,7 +3,7 @@
     <profile kind="CodeFormatterProfile" name="etf" version="12">
         <setting id="org.eclipse.jdt.core.formatter.insert_space_after_ellipsis" value="insert"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_after_comma_in_enum_declarations" value="insert"/>
-        <setting id="org.eclipse.jdt.core.formatter.insert_new_line_in_empty_annotation_declaration" value="do not insert"/>
+        <setting id="org.eclipse.jdt.core.formatter.insert_new_line_in_empty_annotation_declaration" value="insert"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_comma_in_allocation_expression" value="do not insert"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_at_in_annotation_type_declaration" value="insert"/>
         <setting id="org.eclipse.jdt.core.formatter.comment.new_lines_at_block_boundaries" value="false"/>
@@ -288,7 +288,7 @@
         <setting id="org.eclipse.jdt.core.formatter.tabulation.char" value="tab"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_comma_in_multiple_field_declarations" value="do not insert"/>
         <setting id="org.eclipse.jdt.core.formatter.blank_lines_between_import_groups" value="1"/>
-        <setting id="org.eclipse.jdt.core.formatter.lineSplit" value="999"/>
+        <setting id="org.eclipse.jdt.core.formatter.lineSplit" value="128"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_after_opening_paren_in_annotation" value="do not insert"/>
         <setting id="org.eclipse.jdt.core.formatter.insert_space_before_opening_paren_in_switch" value="insert"/>
     </profile>
