@@ -5,6 +5,9 @@ group='de.interactive_instruments.bda'
 description='interactive instruments build and deployment plugin for gradle'
 
 jar {
+	from('src/main/git') {
+		include '*'
+	}
 	from('src/main/gradle') {
 		include '*.gradle'
 	}
