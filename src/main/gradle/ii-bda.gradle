@@ -164,11 +164,9 @@ task updateReadme {
 }
 
 task installGitHooks(type: Copy) {
-    from new File(rootProject.rootDir, './build/gradle/pre-commit') {
-    }
-    into(new File(rootProject.rootDir, '.git/hooks')) {
-        fileMode 0555
-    }
+    from(new File(rootProject.rootDir, './build/gradle/pre-commit'))
+    destinationDir = new File(rootProject.rootDir, '.git/hooks')
+    fileMode 0555
 }
 
 allprojects {
