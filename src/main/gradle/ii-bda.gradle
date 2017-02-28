@@ -100,12 +100,11 @@ if( System.getenv("RELEASE_NEXT_VERSION") ) {
 
 }
 
+ext.versionBuildNumber = '0'
 if (hasProperty("teamcity")) {
     ext.versionBuildNumber = teamcity["build.number"]
 } else if (System.getenv("BUILD_NUMBER")) {
     ext.versionBuildNumber = System.getenv("BUILD_NUMBER")
-} else {
-    ext.versionBuildNumber = '0'
 }
 
 def sTasks = project.gradle.startParameter.taskNames
@@ -497,7 +496,7 @@ allprojects {
         revertOnFail = true
         preCommitText = ''
         preTagCommitMessage = '[RELEASE] :new: Version '
-        tagCommitMessage = 'BN-${project.versionBuildNumber}, V-'
+        tagCommitMessage = "build ${project.versionBuildNumber}, version"
         newVersionCommitMessage = ':arrow_up: New working version '
         tagTemplate = '${version}'
         versionPropertyFile = 'version.properties'
