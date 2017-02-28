@@ -27,7 +27,8 @@ println 'ETF-BDA: Applying ii BDA gradle script 1.0.24 to the project'
 
 buildscript {
 
-    ext.updateVersionEye = project.findProperty("ii.etfdev.quality.reports")=='true' &&
+    ext.updateVersionEye = project.findProperty("ii.etfdev.quality.reports")=='true' && 
+            project.findProperty("ii.etfdev.publish.versioneye")=='true' && 
             (project.findProperty("versioneye.api_key")?.trim() || System.getenv("VERSIONEYE_API_KEY")?.trim())
 
     repositories {
