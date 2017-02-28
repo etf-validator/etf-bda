@@ -1,6 +1,6 @@
 # ETF build and deployment plugin helper
 
-[![Latest version](http://img.shields.io/badge/latest%20version-1.0.23-blue.svg)](https://services.interactive-instruments.de/etfdev-af/plugins-releases-local/de/interactive_instruments/bda/etf-bda/1.0.23/etf-bda-1.0.23.jar)
+[![Latest version](http://img.shields.io/badge/latest%20version-1.0.24-blue.svg)](https://services.interactive-instruments.de/etfdev-af/plugins-releases-local/de/interactive_instruments/bda/etf-bda/1.0.24/etf-bda-1.0.24.jar)
 
 This gradle helper script is used in ETF projects to preconfigure Gradle based Java projects.
 
