@@ -510,6 +510,8 @@ allprojects {
         git {
             requireBranch = 'master'
             pushToRemote = 'origin'
+            // skip pre-commit hook
+            pushOptions = ["--no-verify"]
         }
     }
 
