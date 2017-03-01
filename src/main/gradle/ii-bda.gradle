@@ -92,8 +92,12 @@ if (ext.semversion == null) {
     throw new GradleException("ETF-BDA: property version not set in file version.properties or RELEASE_VERSION environment variable not defined!")
 }
 ext.semversion = ext.semversion.toUpperCase()
-if(System.getenv("FORCE_SNAPSHOT")=='true' && !ext.semversion.contains("SNAPSHOT")) {
+if(System.getenv("FORCE_VERSION_TYPE")?.toUpperCase()=='SNAPSHOT' && !ext.semversion.contains("SNAPSHOT")) {
+    println "ETF-BDA: SNAPSHOT version forced"
     ext.semversion += "-SNAPSHOT"
+}else if(System.getenv("FORCE_VERSION_TYPE")?.toUpperCase()=='RELEASE' && ext.semversion.contains("SNAPSHOT")) {
+    println "ETF-BDA: RELEASE version forced"
+    ext.semversion = ext.semversion.replaceAll('-SNAPSHOT', '')
 }
 def sTasks = project.gradle.startParameter.taskNames
 if (ext.semversion.contains("SNAPSHOT"))
