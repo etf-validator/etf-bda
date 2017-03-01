@@ -23,7 +23,8 @@ import org.gradle.internal.os.OperatingSystem;
  *
  * @author J. Herrmann ( herrmann <aT) interactive-instruments (doT> de )
  */
-println 'ETF-BDA: Applying ii BDA gradle script 1.0.24 to the project'
+ext.bdaVersion = '1.0.24'
+println "ETF-BDA: Applying ii BDA gradle script ${ext.bdaVersion} to the project"
 
 buildscript {
 
@@ -71,7 +72,6 @@ if(currentGradleVersion<requiredVersion) {
 
 ext.versionFile = rootProject.file("./version.properties")
 
-// Set and check project version
 if (!ext.versionFile.exists()) {
     throw new GradleException("ETF-BDA: required file version.properties does not exist! Create it!")
 }
@@ -88,25 +88,13 @@ if( System.getenv("RELEASE_VERSION") ) {
   }
   ext.semversion = versionProperties.version
 }
-
 if (ext.semversion == null) {
     throw new GradleException("ETF-BDA: property version not set in file version.properties or RELEASE_VERSION environment variable not defined!")
 }
 ext.semversion = ext.semversion.toUpperCase()
-
-ext.nextVersion = null
-if( System.getenv("RELEASE_NEXT_VERSION") ) {
-    ext.nextVersion = System.getenv("RELEASE_NEXT_VERSION").toUpperCase()
-
+if(System.getenv("FORCE_SNAPSHOT")=='true' && !ext.semversion.contains("SNAPSHOT")) {
+    ext.semversion += "-SNAPSHOT"
 }
-
-ext.versionBuildNumber = '0'
-if (hasProperty("teamcity")) {
-    ext.versionBuildNumber = teamcity["build.number"]
-} else if (System.getenv("BUILD_NUMBER")) {
-    ext.versionBuildNumber = System.getenv("BUILD_NUMBER")
-}
-
 def sTasks = project.gradle.startParameter.taskNames
 if (ext.semversion.contains("SNAPSHOT"))
 {
@@ -122,15 +110,36 @@ if (ext.semversion.contains("SNAPSHOT"))
     ext.snapshotSuffix = ""
 }
 
+// Next version
+/////////////////////////////////////
+ext.nextVersion = null
+if( System.getenv("RELEASE_NEXT_VERSION") ) {
+    ext.nextVersion = System.getenv("RELEASE_NEXT_VERSION").toUpperCase()
+}
+
+// Build number
+/////////////////////////////////////
+ext.versionBuildNumber = '0'
+if (hasProperty("teamcity")) {
+    ext.versionBuildNumber = teamcity["build.number"]
+} else if (System.getenv("BUILD_NUMBER")) {
+    ext.versionBuildNumber = System.getenv("BUILD_NUMBER")
+}
+
 // Credentials
+/////////////////////////////////////
 ext.r_user = project.findProperty("ii.etfdev.repo.username") ?: 'etf-public-releases'
 ext.r_pwd = project.findProperty("ii.etfdev.repo.password") ?: 'etf-public-releases'
 
 println "ETF-BDA: Authenticating will be done as user ${ext.r_user}"
 
+// Check if quality reports shall be generated
+/////////////////////////////////////
 ext.qualityReports = project.hasProperty("ii.etfdev.quality.reports") &&
         project.getProperty("ii.etfdev.quality.reports") == "true"
 
+// Replace versions in the Readme.md
+/////////////////////////////////////
 task updateReadme {
   description 'Replace patterns found in the Readme.md'
 
@@ -443,6 +452,7 @@ allprojects {
                     'Build-JDK': System.getProperty('java.version'),
                     'Build-Date': new Date().format('yyMMddHHmmss'),
                     'Build-Gradle': gradle.gradleVersion,
+                    'Build-ii-bda': gradle.rootProject.ext.bdaVersion,
                     'Source-Compatibility': project.sourceCompatibility,
                     'Target-Compatibility': project.targetCompatibility,
             )
