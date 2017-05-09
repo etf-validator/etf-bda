@@ -60,6 +60,13 @@ These can be formatted by running:
 $ gradlew spotlessApply
 ```
 
+## Known limitations
+- Project directories must be GIT cloned or initialized otherwise an "unknown repository" error is reported
+
+## Planned for version 1.0.25
+- Configure Gradle Build cache https://docs.gradle.org/3.5/userguide/build_cache.html
+- Warning in line 242
+
 ## Release artifacts
 Add your credentials for releasing an artifact to the ii repo in the ~/.gradle/gradle.properties file:
 
