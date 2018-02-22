@@ -1,6 +1,6 @@
 # ETF build and deployment plugin helper
 
-[![Latest version](http://img.shields.io/badge/latest%20version-1.0.24-blue.svg)](https://services.interactive-instruments.de/etfdev-af/plugins-releases-local/de/interactive_instruments/bda/etf-bda/1.0.24/etf-bda-1.0.24.jar)
+[![Latest version](http://img.shields.io/badge/latest%20version-1.0.26-blue.svg)](https://services.interactive-instruments.de/etfdev-af/plugins-releases-local/de/interactive_instruments/bda/etf-bda/1.0.26/etf-bda-1.0.26.jar)
 
 This gradle helper script is used in ETF projects to preconfigure Gradle based Java projects.
 
@@ -20,7 +20,7 @@ buildscript {
 			}}
 	}
 	dependencies {
-		classpath group: 'de.interactive_instruments.bda', name: 'etf-bda', version:'1.0.X'
+		classpath group: 'de.interactive_instruments.bda', name: 'etf-bda', version: '[1.0.26,1.0.99]'
 	}
 	dependencies {
 		ant.unjar src: configurations.classpath.files.find {it.path.contains('etf')}, dest: 'build/gradle'
@@ -76,12 +76,12 @@ $ gradlew release
 ## Known limitations
 - Project directories must be GIT cloned or initialized otherwise an "unknown repository" error is reported
 
-## Planned for version 1.0.25
-- Configure Gradle Build cache https://docs.gradle.org/3.5/userguide/build_cache.html
-- Warning in line 242
-
 ## Used plugins
 The following plugins are used:
 
 - [Release plugin for releasing artifacts](https://github.com/researchgate/gradle-release)
 - [Spotless plugin for checking and applying formatting](https://github.com/diffplug/spotless)
+
+## Breaking changes
+
+- [VersionEye](https://blog.versioneye.com/2017/10/19/versioneye-sunset-process/) has been removed in 1.0.26
