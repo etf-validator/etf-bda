@@ -23,7 +23,7 @@ import org.gradle.internal.os.OperatingSystem
  *
  * @author J. Herrmann ( herrmann <aT) interactive-instruments (doT> de )
  */
-ext.bdaVersion = '1.0.26'
+ext.bdaVersion = '1.0.26.1'
 println "ETF-BDA: Applying ii BDA gradle script ${ext.bdaVersion} to the project"
 
 buildscript {
@@ -176,9 +176,22 @@ task updateReadme {
   }
 }
 
+def cDir = file(project.rootDir)
+def gDir = cDir
+for(int i=0; i<3; i++) {
+    gDir = new File(cDir, '.git')
+    if(gDir.exists()) {
+        break
+    }
+    cDir = cDir.getParentFile()
+}
+if(!gDir.exists()) {
+    throw new GradleException("ETF-BDA: '.git' directory not found. !")
+}
+
 task installGitHooks(type: Copy) {
     from(new File(rootProject.rootDir, './build/gradle/pre-commit'))
-    destinationDir = new File(rootProject.rootDir, '.git/hooks')
+    destinationDir = new File(gDir, '.git/hooks')
     fileMode 0555
 }
 
@@ -238,19 +251,6 @@ allprojects {
 
     ext.versionBuildNumber = gradle.rootProject.ext.versionBuildNumber
     assert ext.versionBuildNumber != null
-
-    def cDir = file(project.rootDir)
-    def gDir = cDir
-    for(int i=0; i<3; i++) {
-        gDir = new File(cDir, '.git')
-        if(gDir.exists()) {
-            break
-        }
-        cDir = cDir.getParentFile()
-    }
-    if(!gDir.exists()) {
-        throw new GradleException("ETF-BDA: '.git' directory not found. !")
-    }
 
     ext.repo = org.ajoberstar.grgit.Grgit.open(gDir)
     assert ext.repo != null
