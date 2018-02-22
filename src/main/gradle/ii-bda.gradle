@@ -239,7 +239,20 @@ allprojects {
     ext.versionBuildNumber = gradle.rootProject.ext.versionBuildNumber
     assert ext.versionBuildNumber != null
 
-    ext.repo = org.ajoberstar.grgit.Grgit.open(file(project.rootDir))
+    def cDir = file(project.rootDir)
+    def gDir = cDir
+    for(int i=0; i<3; i++) {
+        gDir = new File(cDir, '.git')
+        if(gDir.exists()) {
+            break
+        }
+        cDir = cDir.getParentFile()
+    }
+    if(!gDir.exists()) {
+        throw new GradleException("ETF-BDA: '.git' directory not found. !")
+    }
+
+    ext.repo = org.ajoberstar.grgit.Grgit.open(gDir)
     assert ext.repo != null
     ext.repoUrl = ext.repo.remote.list()[0].url
 
