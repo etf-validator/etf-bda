@@ -15,7 +15,7 @@
  */
 
 import java.util.regex.Matcher
-import org.gradle.internal.os.OperatingSystem;
+import org.gradle.internal.os.OperatingSystem
 
 
 /**
@@ -23,14 +23,10 @@ import org.gradle.internal.os.OperatingSystem;
  *
  * @author J. Herrmann ( herrmann <aT) interactive-instruments (doT> de )
  */
-ext.bdaVersion = '1.0.24'
+ext.bdaVersion = '1.0.26'
 println "ETF-BDA: Applying ii BDA gradle script ${ext.bdaVersion} to the project"
 
 buildscript {
-
-    ext.updateVersionEye = project.findProperty("ii.etfdev.quality.reports")=='true' && 
-            project.findProperty("ii.etfdev.publish.versioneye")=='true' && 
-            (project.findProperty("versioneye.api_key")?.trim() || System.getenv("VERSIONEYE_API_KEY")?.trim())
 
     repositories {
         jcenter()
@@ -49,10 +45,6 @@ buildscript {
         // Git plugin for version information, repo url, etc
         classpath 'org.ajoberstar:grgit:1.8.0'
 
-        if(project.updateVersionEye) {
-            // Monitor dependency information (version, license, security status)
-            classpath 'org.standardout:gradle-versioneye-plugin:1.4.0'
-        }
     }
 }
 
@@ -60,7 +52,7 @@ buildscript {
 /////////////////////////////////////
 
 final GradleVersion currentGradleVersion = GradleVersion.current()
-final GradleVersion requiredVersion = GradleVersion.version('3.4')
+final GradleVersion requiredVersion = GradleVersion.version('3.5')
 if(currentGradleVersion<requiredVersion) {
     throw new GradleException("ETF-BDA: The configured Gradle version "+currentGradleVersion+
             " in the gradle-wrapper.properties file "+
@@ -132,8 +124,8 @@ if (hasProperty("teamcity")) {
 
 // Credentials
 /////////////////////////////////////
-ext.r_user = project.findProperty("ii.etfdev.repo.username") ?: 'etf-public-releases'
-ext.r_pwd = project.findProperty("ii.etfdev.repo.password") ?: 'etf-public-releases'
+ext.r_user = project.findProperty("ii.etfdev.repo.username") ?: 'etf-public-dev'
+ext.r_pwd = project.findProperty("ii.etfdev.repo.password") ?: 'etf-public-dev'
 
 println "ETF-BDA: Authenticating will be done as user ${ext.r_user}"
 
@@ -141,6 +133,14 @@ println "ETF-BDA: Authenticating will be done as user ${ext.r_user}"
 /////////////////////////////////////
 ext.qualityReports = project.hasProperty("ii.etfdev.quality.reports") &&
         project.getProperty("ii.etfdev.quality.reports") == "true"
+
+// License
+/////////////////////////////////////
+if(gradle.ext.has("ii.license.header")) {
+    ext.licenseHeaderName = gradle.ext.get("ii.license.header")
+}else{
+    ext.licenseHeaderName = 'apache2-license'
+}
 
 // Replace versions in the Readme.md
 /////////////////////////////////////
@@ -190,19 +190,19 @@ allprojects {
         etf_junitTestVersion = '4.12'
 
         // testCompile group: 'ch.qos.logback', name: 'logback-classic', version: etf_logbackVersion
-        etf_logbackVersion = '1.2.1'
+        etf_logbackVersion = '1.2.3'
 
         // compile group: 'org.slf4j', name: 'slf4j-api', version: etf_slf4jApiVersion
-        etf_slf4jApiVersion = '1.7.24'
+        etf_slf4jApiVersion = '1.7.25'
 
         // compile group: 'org.apache.commons', name: 'commons-lang3', version: etf_commonsLang3Version
-        etf_commonsLang3Version = '3.5'
+        etf_commonsLang3Version = '3.7'
 
         // compile group: 'commons-codec', name: 'commons-codec', version: etf_commonsCodecVersion
-        etf_commonsCodecVersion = '1.10'
+        etf_commonsCodecVersion = '1.11'
 
         // compile group: 'commons-io', name: 'commons-io', version: etf_commonsIoVersion
-        etf_commonsIoVersion = '2.5'
+        etf_commonsIoVersion = '2.6'
 
         // compile group: 'commons-collections', name: 'commons-collections', version: etf_commonsCollectionsVersion
         etf_commonsCollectionsVersion = '3.2.2'
@@ -214,13 +214,13 @@ allprojects {
         etf_xmlApisVersion = '1.4.01'
 
         // compile group: 'net.sf.saxon', name: 'Saxon-HE', version: etf_saxonHe
-        etf_saxonHe = '9.7.0-15'
+        etf_saxonHe = '9.8.0-7'
 
         // compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: etf_jaxbVersion
-        etf_jaxbVersion = '2.2.11'
+        etf_jaxbVersion = '2.3.0'
 
         // compile group: 'de.interactive_instruments', name: 'ii-commons-util', version: etf_iiCommonsVersion
-        etf_iiCommonsVersion = '2.0.0'
+        etf_iiCommonsVersion = '2.0.1'
     }
 
     apply plugin: 'java'
@@ -251,6 +251,7 @@ allprojects {
         include 'src/test/java/de/interactive_instruments/**/*.java'
         exclude '**/package-info.java'
         exclude 'apache2-license-header.java'
+        exclude 'eupl-12-license-header*.java'
     }
 
     repositories {
@@ -332,7 +333,7 @@ allprojects {
         }
         pmdMain {
             reports {
-                xml.enabled = false
+                xml.enabled = true
                 html.enabled = true
             }
         }
@@ -346,7 +347,7 @@ allprojects {
         }
         jacocoTestReport {
             reports {
-                xml.enabled = false
+                xml.enabled = true
                 html.enabled = true
             }
         }
@@ -362,20 +363,6 @@ allprojects {
             reports {
                 xml.enabled false
                 text.enabled true
-            }
-        }
-
-        //////////////////////////////////////
-        // DEPENDENCY CHECKS - VersionEye //
-        //////////////////////////////////////
-        if(project.updateVersionEye)
-        {
-            apply plugin: org.standardout.gradle.plugin.versioneye.VersionEyePlugin
-            versioneye {
-                dependencies=declared
-                includePlugins=false
-                exclude 'testCompile', 'testRuntime', 'testRuntimeOnly', 'testImplementation', 
-                        'runtimeOnly', 'runtimeElements', 'implementation', 'apiElements'
             }
         }
     }
@@ -396,7 +383,7 @@ allprojects {
                 pom.project {
                     inceptionYear '2010'
 
-                    url 'http://interactive-instruments.github.io/etf-webapp'
+                    url 'http://www.etf-validator.net'
 
                     scm {
                         url = "${project.repoUrl}"
@@ -405,10 +392,18 @@ allprojects {
                     }
 
                     licenses {
-                        license {
-                            name 'The Apache Software License, Version 2.0'
-                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                            distribution 'repo'
+                        if(licenseHeaderName.contains('eupl-12')) {
+                            license {
+                                name 'European Union Public Licence, Version 1.2'
+                                url 'https://joinup.ec.europa.eu/software/page/eupl'
+                                distribution 'repo'
+                            }
+                        }else if(licenseHeaderName.contains('apache-2')){
+                            license {
+                                name 'The Apache Software License, Version 2.0'
+                                url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                                distribution 'repo'
+                            }
                         }
                     }
 
@@ -470,7 +465,7 @@ allprojects {
     spotless {
         java {
             target spotlessJavaSrcFiles
-            licenseHeaderFile rootProject.file('./build/gradle/apache2-license-header.java')
+            licenseHeaderFile rootProject.file("./build/gradle/${project.licenseHeaderName}-header.java")
             importOrder(['java', 'javax', 'com', 'org', 'de'])
             eclipseFormatFile rootProject.file('./build/gradle/etf.eclipseformat.xml')
             trimTrailingWhitespace()
@@ -481,7 +476,7 @@ allprojects {
 
         format 'groovy', {
             target '**/*.groovy'
-            licenseHeaderFile rootProject.file('./build/gradle/apache2-license-header.java'), "package "
+            licenseHeaderFile rootProject.file("./build/gradle/${project.licenseHeaderName}-header.java"), "package "
         }
 
         format 'misc', {
@@ -531,10 +526,6 @@ allprojects {
     if (tasks.findByPath('uploadArchives') != null) {
         beforeReleaseBuild.dependsOn updateReadme
         afterReleaseBuild.dependsOn uploadArchives
-        if(project.updateVersionEye) {
-            versionEyeUpdate.shouldRunAfter uploadArchives
-            afterReleaseBuild.dependsOn versionEyeUpdate
-        }
     }
 
     install.doLast {
@@ -545,7 +536,7 @@ allprojects {
         println "ETF-BDA: Uploaded version ${version}"
     }
 
-    if (!OperatingSystem.current().isWindows()) {
+    if (!OperatingSystem.current().isWindows() && project.versionBuildNumber=='0') {
         build.dependsOn installGitHooks
     }
 }
