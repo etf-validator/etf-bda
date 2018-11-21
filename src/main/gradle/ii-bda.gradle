@@ -1,5 +1,5 @@
 /**
- * Copyright 2010-2017 interactive instruments GmbH
+ * Copyright 2010-2018 interactive instruments GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.gradle.internal.os.OperatingSystem
  *
  * @author J. Herrmann ( herrmann <aT) interactive-instruments (doT> de )
  */
-ext.bdaVersion = '1.0.26.1'
+ext.bdaVersion = '1.0.28'
 println "ETF-BDA: Applying ii BDA gradle script ${ext.bdaVersion} to the project"
 
 buildscript {
@@ -37,13 +37,13 @@ buildscript {
     dependencies {
 
         // Release plugin
-        classpath 'net.researchgate:gradle-release:2.5.0'
+        classpath 'net.researchgate:gradle-release:2.7.0'
 
         // Code formatting and license headers plugin
         classpath 'com.diffplug.gradle.spotless:spotless:1.3.3'
 
         // Git plugin for version information, repo url, etc
-        classpath 'org.ajoberstar:grgit:1.8.0'
+        classpath 'org.ajoberstar:grgit:2.3.0'
 
     }
 }
@@ -126,7 +126,6 @@ if (hasProperty("teamcity")) {
 /////////////////////////////////////
 ext.r_user = project.findProperty("ii.etfdev.repo.username") ?: 'etf-public-dev'
 ext.r_pwd = project.findProperty("ii.etfdev.repo.password") ?: 'etf-public-dev'
-
 println "ETF-BDA: Authenticating will be done as user ${ext.r_user}"
 
 // Check if quality reports shall be generated
@@ -176,24 +175,28 @@ task updateReadme {
   }
 }
 
-def cDir = file(project.rootDir)
-def gDir = cDir
-for(int i=0; i<3; i++) {
-    gDir = new File(cDir, '.git')
-    if(gDir.exists()) {
+def cDir = file(project.rootDir ? project.rootDir : '.')
+def gitDir = file('.git')
+for(int i=0; i<4; i++) {
+    if(!cDir) {
+        break;
+    }
+    gitDir = new File(cDir, '.git')
+    if(gitDir.exists()) {
         break
     }
     cDir = cDir.getParentFile()
 }
-if(!gDir.exists()) {
-    throw new GradleException("ETF-BDA: '.git' directory not found. !")
+if(!gitDir.exists()) {
+    throw new GradleException("ETF-BDA: '.git' directory not found!")
+}else{
+    task installGitHooks(type: Copy) {
+        from(new File(cDir, './build/gradle/pre-commit'))
+        destinationDir = new File(gitDir, '.git/hooks')
+        fileMode 0555
+    }
 }
 
-task installGitHooks(type: Copy) {
-    from(new File(rootProject.rootDir, './build/gradle/pre-commit'))
-    destinationDir = new File(gDir, '.git/hooks')
-    fileMode 0555
-}
 
 allprojects {
 
@@ -227,7 +230,7 @@ allprojects {
         etf_xmlApisVersion = '1.4.01'
 
         // compile group: 'net.sf.saxon', name: 'Saxon-HE', version: etf_saxonHe
-        etf_saxonHe = '9.8.0-7'
+        etf_saxonHe = '9.9.0-1'
 
         // compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: etf_jaxbVersion
         etf_jaxbVersion = '2.3.0'
@@ -252,9 +255,16 @@ allprojects {
     ext.versionBuildNumber = gradle.rootProject.ext.versionBuildNumber
     assert ext.versionBuildNumber != null
 
-    ext.repo = org.ajoberstar.grgit.Grgit.open(gDir)
-    assert ext.repo != null
-    ext.repoUrl = ext.repo.remote.list()[0].url
+    ext.repo = org.ajoberstar.grgit.Grgit.open(dir: gitDir)
+    ext.repoUrl = ext.repo?.remote.list()[0].url
+
+    def repoUrl = repo.remote.list().collect { remote ->
+        def url = remote.url
+        def gitPostfix = url.indexOf(".git")
+        return url.substring(url.indexOf(":") + 1, gitPostfix == -1 ? url.length() : gitPostfix)
+    }.unique(false).getAt(0)
+    println repoUrl
+
 
     assert gradle.rootProject.ext.r_user != null
     assert gradle.rootProject.ext.r_pwd != null
@@ -284,10 +294,15 @@ allprojects {
             }
         }
         mavenCentral()
-        if (project.snapshotSuffix) {
-            println "ETF-BDA: Activating local repository for SNAPSHOT version"
-            mavenLocal()
 
+        if (project.snapshotSuffix) {
+
+
+
+            if(ext.versionBuildNumber == '0') {
+                // Enable local Maven repositories if build is not running in Jenkins
+                mavenLocal()
+            }
             maven {
                 url "https://services.interactive-instruments.de/etfdev-af/snapshot"
                 credentials {
@@ -295,7 +310,24 @@ allprojects {
                     password gradle.rootProject.ext.r_pwd
                 }
             }
+            if(ext.versionBuildNumber != '0' && System.getenv('AF_INT_ENV')) {
+                def intEnv = System.getenv('AF_INT_ENV').toLowerCase()
+                def branch = System.getenv('BRANCH_NAME')
+                def changeId = System.getenv('CHANGE_ID')
+
+                println "ETF-BDA: Using "+intEnv+" repository for "+System.getenv('CHANGE_AUTHOR_EMAIL')
+                maven {
+                    url "https://services.interactive-instruments.de/etfdev-af/"+intEnv
+                    credentials {
+                        username gradle.rootProject.ext.r_user
+                        password gradle.rootProject.ext.r_pwd
+                    }
+                }
+            }else{
+                println "ETF-BDA: Using SNAPSHOT repository"
+            }
         } else {
+            println "ETF-BDA: Using RELEASE repository"
             maven {
                 url "https://services.interactive-instruments.de/etfdev-af/release"
                 credentials {
@@ -398,10 +430,18 @@ allprojects {
 
                     url 'http://www.etf-validator.net'
 
-                    scm {
-                        url = "${project.repoUrl}"
-                        connection = "${project.repoUrl}"
-                        developerConnection = "${project.repoUrl}"
+                    if(project.repoUrl) {
+                        scm {
+                            url = "${project.repoUrl}"
+                            connection = "${project.repoUrl}"
+                            developerConnection = "${project.repoUrl}"
+                        }
+
+                        issueManagement {
+                            system 'github'
+                            url 'https://github.com/etf-validator/etf-webapp/issues'
+                        }
+
                     }
 
                     licenses {
@@ -456,7 +496,7 @@ allprojects {
                     'Implementation-Vendor': 'interactive instruments GmbH',
                     'Implementation-Vendor-Id': 'de.interactive_instruments',
                     'Implementation-Version': project.version,
-                    'Implementation-Revision': repo.head().abbreviatedId,
+                    'Implementation-Revision': repo ? repo.head().abbreviatedId : 'unknown',
                     'Implementation-Build': project.versionBuildNumber,
                     'Built-By': gradle.rootProject.ext.r_user,
                     'Build-User': System.getProperty('user.name'),
@@ -504,41 +544,43 @@ allprojects {
     ///////////////
     // RELEASING //
     ///////////////
-    apply plugin: net.researchgate.release.ReleasePlugin
-    if( System.getenv("DEVELOPMENT_VERSION") ) {
-      project.ext.set("release.newVersion", System.getenv("DEVELOPMENT_VERSION"))
-    }
-    release {
-        ext.snapshotSuffix = ""
-        failOnCommitNeeded = true
-        failOnPublishNeeded = true
-        failOnSnapshotDependencies = true
-        failOnUnversionedFiles = true
-        failOnUpdateNeeded = true
-        revertOnFail = true
-        preCommitText = ''
-        preTagCommitMessage = '[RELEASE] :new: Version '
-        tagCommitMessage = "build ${project.versionBuildNumber}, version"
-        newVersionCommitMessage = ':arrow_up: New working version '
-        tagTemplate = '${version}'
-        versionPropertyFile = 'version.properties'
-        versionProperties = []
-        buildTasks = ['build']
-        versionPatterns = [
-                /(\d+)([^\d]*$)/: { Matcher m, Project p -> m.replaceAll("${(m[0][1] as int) + 1}${m[0][2]}") }
-        ]
-
-        git {
-            requireBranch = 'master'
-            pushToRemote = 'origin'
-            // skip pre-commit hook
-            pushOptions = ["--no-verify"]
+    if(gitDir) {
+        apply plugin: net.researchgate.release.ReleasePlugin
+        if (System.getenv("DEVELOPMENT_VERSION")) {
+            project.ext.set("release.newVersion", System.getenv("DEVELOPMENT_VERSION"))
         }
-    }
+        release {
+            ext.snapshotSuffix = ""
+            failOnCommitNeeded = true
+            failOnPublishNeeded = true
+            failOnSnapshotDependencies = true
+            failOnUnversionedFiles = true
+            failOnUpdateNeeded = true
+            revertOnFail = true
+            preCommitText = ''
+            preTagCommitMessage = '[RELEASE] :new: Version '
+            tagCommitMessage = "build ${project.versionBuildNumber}, version"
+            newVersionCommitMessage = ':arrow_up: New working version '
+            tagTemplate = '${version}'
+            versionPropertyFile = 'version.properties'
+            versionProperties = []
+            buildTasks = ['build']
+            versionPatterns = [
+                    /(\d+)([^\d]*$)/: { Matcher m, Project p -> m.replaceAll("${(m[0][1] as int) + 1}${m[0][2]}") }
+            ]
 
-    if (tasks.findByPath('uploadArchives') != null) {
-        beforeReleaseBuild.dependsOn updateReadme
-        afterReleaseBuild.dependsOn uploadArchives
+            git {
+                requireBranch = 'master'
+                pushToRemote = 'origin'
+                // skip pre-commit hook
+                pushOptions = ["--no-verify"]
+            }
+        }
+
+        if (tasks.findByPath('uploadArchives') != null) {
+            beforeReleaseBuild.dependsOn updateReadme
+            afterReleaseBuild.dependsOn uploadArchives
+        }
     }
 
     install.doLast {
@@ -549,7 +591,7 @@ allprojects {
         println "ETF-BDA: Uploaded version ${version}"
     }
 
-    if (!OperatingSystem.current().isWindows() && project.versionBuildNumber=='0') {
+    if (gitDir && !OperatingSystem.current().isWindows() && project.versionBuildNumber=='0') {
         build.dependsOn installGitHooks
     }
 }

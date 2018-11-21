@@ -1,6 +1,6 @@
 # ETF build and deployment plugin helper
 
-[![Latest version](http://img.shields.io/badge/latest%20version-1.0.26-blue.svg)](https://services.interactive-instruments.de/etfdev-af/plugins-releases-local/de/interactive_instruments/bda/etf-bda/1.0.26/etf-bda-1.0.26.jar)
+[![Latest version](http://img.shields.io/badge/latest%20version-1.0.27-blue.svg)](https://services.interactive-instruments.de/etfdev-af/plugins-releases-local/de/interactive_instruments/bda/etf-bda/1.0.27/etf-bda-1.0.27.jar)
 
 This gradle helper script is used in ETF projects to preconfigure Gradle based Java projects.
 
@@ -12,15 +12,15 @@ The following block must be inserted at the beginning of a build.gradle file:
 buildscript {
 	repositories {
 		maven {
-			url "http://services.interactive-instruments.de/etfdev-af/plugins-releases-local"
+			url "https://services.interactive-instruments.de/etfdev-af/plugins-releases-local"
 			credentials {
-				// Our repo does not allow empty credentials
+				// Our repository requires authenticating
 				username 'ii-bda'
-				password '6ozhS683'
+				password 'AP7mb4WA6F1ckdZkaE8Qx8GSowt'
 			}}
 	}
 	dependencies {
-		classpath group: 'de.interactive_instruments.bda', name: 'etf-bda', version: '[1.0.26,1.0.99]'
+		classpath group: 'de.interactive_instruments.bda', name: 'etf-bda', version: '[1.0.27,1.0.99]'
 	}
 	dependencies {
 		ant.unjar src: configurations.classpath.files.find {it.path.contains('etf')}, dest: 'build/gradle'
@@ -61,7 +61,8 @@ $ gradlew spotlessApply
 ```
 
 ## Release artifacts
-You need an interactive instruments account for releasing artifacts to the ii repo. Add your credentials in the ~/.gradle/gradle.properties file:
+You need an interactive instruments account for accessing artifacts in the ii repo.
+Add your credentials in the ~/.gradle/gradle.properties file:
 
 ```
 ii.etfdev.repo.username=user@foo.bar
