@@ -16,6 +16,7 @@
 
 import java.util.regex.Matcher
 import org.gradle.internal.os.OperatingSystem
+import org.gradle.util.GradleVersion
 
 
 /**
@@ -23,7 +24,7 @@ import org.gradle.internal.os.OperatingSystem
  *
  * @author J. Herrmann ( herrmann <aT) interactive-instruments (doT> de )
  */
-ext.bdaVersion = '1.0.28'
+ext.bdaVersion = '2.0.0.0'
 println "ETF-BDA: Applying ii BDA gradle script ${ext.bdaVersion} to the project"
 
 buildscript {
@@ -40,11 +41,16 @@ buildscript {
         classpath 'net.researchgate:gradle-release:2.7.0'
 
         // Code formatting and license headers plugin
-        classpath 'com.diffplug.gradle.spotless:spotless:1.3.3'
+        classpath 'com.diffplug.spotless:spotless-plugin-gradle:3.4.0'
 
         // Git plugin for version information, repo url, etc
         classpath 'org.ajoberstar:grgit:2.3.0'
 
+        // Code Quality
+        classpath "org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:2.6.2"
+
+        // Spotbugs
+        classpath "gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:1.7.1"
     }
 }
 
@@ -52,7 +58,7 @@ buildscript {
 /////////////////////////////////////
 
 final GradleVersion currentGradleVersion = GradleVersion.current()
-final GradleVersion requiredVersion = GradleVersion.version('3.5')
+final GradleVersion requiredVersion = GradleVersion.version('5.3')
 if(currentGradleVersion<requiredVersion) {
     throw new GradleException("ETF-BDA: The configured Gradle version "+currentGradleVersion+
             " in the gradle-wrapper.properties file "+
@@ -72,13 +78,13 @@ if (!ext.versionFile.canRead()) {
 }
 ext.semversion = null
 if( System.getenv("RELEASE_VERSION") ) {
-  ext.semversion = System.getenv("RELEASE_VERSION")
+    ext.semversion = System.getenv("RELEASE_VERSION")
 }else{
-  def versionProperties = new Properties()
-  ext.versionFile.withInputStream {
-      stream -> versionProperties.load(stream)
-  }
-  ext.semversion = versionProperties.version
+    def versionProperties = new Properties()
+    ext.versionFile.withInputStream {
+        stream -> versionProperties.load(stream)
+    }
+    ext.semversion = versionProperties.version
 }
 if (ext.semversion == null) {
     throw new GradleException("ETF-BDA: property version not set in file version.properties or RELEASE_VERSION environment variable not defined!")
@@ -120,8 +126,11 @@ if (hasProperty("teamcity")) {
     ext.versionBuildNumber = teamcity["build.number"]
 } else if (System.getenv("BUILD_NUMBER")) {
     ext.versionBuildNumber = System.getenv("BUILD_NUMBER")
+} else if (System.getenv("TRAVIS_BUILD_NUMBER")) {
+    ext.versionBuildNumber = System.getenv("TRAVIS_BUILD_NUMBER")
+}  else if (System.getenv("APPVEYOR_BUILD_NUMBER")) {
+    ext.versionBuildNumber = System.getenv("APPVEYOR_BUILD_NUMBER")
 }
-
 // Credentials
 /////////////////////////////////////
 ext.r_user = project.findProperty("ii.etfdev.repo.username") ?: 'etf-public-dev'
@@ -144,35 +153,35 @@ if(gradle.ext.has("ii.license.header")) {
 // Replace versions in the Readme.md
 /////////////////////////////////////
 task updateReadme {
-  description 'Replace patterns found in the Readme.md'
+    description 'Replace patterns found in the Readme.md'
 
-  doLast {
+    doLast {
 
-    final File readmeFile = rootProject.file("./Readme.md")
-    if (readmeFile.exists()) {
-        final String afRepoUrl = uploadArchives.repositories.mavenDeployer.repository.url
-        // snapshot url needed? uploadArchives.repositories.mavenDeployer.snapshotRepository.url
-        assert afRepoUrl != null
+        final File readmeFile = rootProject.file("./Readme.md")
+        if (readmeFile.exists()) {
+            final String afRepoUrl = uploadArchives.repositories.mavenDeployer.repository.url
+            // snapshot url needed? uploadArchives.repositories.mavenDeployer.snapshotRepository.url
+            assert afRepoUrl != null
 
-        // Prefer zips
-        final String file = uploadArchives.artifacts.files.sort()[0].name
+            // Prefer zips
+            final String file = uploadArchives.artifacts.files.sort()[0].name
 
-        final String baseUrl = afRepoUrl +"/"+ rootProject.group.replace('.','/') +
-                "/"+ rootProject.name +"/";
+            final String baseUrl = afRepoUrl +"/"+ rootProject.group.replace('.','/') +
+                    "/"+ rootProject.name +"/"
 
-        final String completeUrl = baseUrl + rootProject.version +"/"+ file
+            final String completeUrl = baseUrl + rootProject.version +"/"+ file
 
-        final String latestVersionShield = '[![Latest version]'+
-                '(http://img.shields.io/badge/latest%20version-'+rootProject.version+'-blue.svg)]'+
-                '('+completeUrl+')'
+            final String latestVersionShield = '[![Latest version]'+
+                    '(http://img.shields.io/badge/latest%20version-'+rootProject.version+'-blue.svg)]'+
+                    '('+completeUrl+')'
 
-        String readmeText = readmeFile.text
-        readmeText = readmeText.replaceFirst(
-                /\[\!\[Latest version\]\(http:\/\/img\.shields\.io\/badge\/latest\%20version-.*/ ,
-                latestVersionShield)
-        readmeFile.write(readmeText)
+            String readmeText = readmeFile.text
+            readmeText = readmeText.replaceFirst(
+                    /\[\!\[Latest version\]\(http:\/\/img\.shields\.io\/badge\/latest\%20version-.*/ ,
+                    latestVersionShield)
+            readmeFile.write(readmeText)
+        }
     }
-  }
 }
 
 def cDir = file(project.rootDir ? project.rootDir : '.')
@@ -200,22 +209,28 @@ if(!gitDir.exists()) {
 
 allprojects {
 
+    buildscript {
+        repositories {
+            mavenCentral()
+        }
+    }
+
     // Default lib versions
     ext {
         // testCompile group: 'junit', name: 'junit', version: etf_junitTestVersion
-        etf_junitTestVersion = '4.12'
+        etf_junitTestVersion = '5.4.1'
 
         // testCompile group: 'ch.qos.logback', name: 'logback-classic', version: etf_logbackVersion
         etf_logbackVersion = '1.2.3'
 
         // compile group: 'org.slf4j', name: 'slf4j-api', version: etf_slf4jApiVersion
-        etf_slf4jApiVersion = '1.7.25'
+        etf_slf4jApiVersion = '1.7.26'
 
         // compile group: 'org.apache.commons', name: 'commons-lang3', version: etf_commonsLang3Version
-        etf_commonsLang3Version = '3.7'
+        etf_commonsLang3Version = '3.8.1'
 
         // compile group: 'commons-codec', name: 'commons-codec', version: etf_commonsCodecVersion
-        etf_commonsCodecVersion = '1.11'
+        etf_commonsCodecVersion = '1.12'
 
         // compile group: 'commons-io', name: 'commons-io', version: etf_commonsIoVersion
         etf_commonsIoVersion = '2.6'
@@ -230,41 +245,43 @@ allprojects {
         etf_xmlApisVersion = '1.4.01'
 
         // compile group: 'net.sf.saxon', name: 'Saxon-HE', version: etf_saxonHe
-        etf_saxonHe = '9.9.0-1'
+        etf_saxonHe = '9.9.1-2'
 
         // compile group: 'org.glassfish.jaxb', name: 'jaxb-runtime', version: etf_jaxbVersion
-        etf_jaxbVersion = '2.3.0'
+        etf_jaxbVersion = '2.3.1'
 
         // compile group: 'de.interactive_instruments', name: 'ii-commons-util', version: etf_iiCommonsVersion
-        etf_iiCommonsVersion = '2.0.1'
+        etf_iiCommonsVersion = '3.0.0'
     }
 
     apply plugin: 'java'
     apply plugin: 'maven'
+    if( rootProject == project ) {
+        apply plugin: org.sonarqube.gradle.SonarQubePlugin
+    }
 
-    version = ext.semversion
+    version = rootProject.ext.semversion
     assert version != null
 
-    if(ext.nextVersion != null) {
+    if(rootProject.ext.nextVersion != null) {
         project.setProperty("release.newVersion", ext.nextVersion)
     }
 
-    ext.snapshotSuffix = gradle.rootProject.ext.snapshotSuffix
+    ext.snapshotSuffix = rootProject.ext.snapshotSuffix
     assert ext.snapshotSuffix != null
 
-    ext.versionBuildNumber = gradle.rootProject.ext.versionBuildNumber
+    ext.versionBuildNumber = rootProject.ext.versionBuildNumber
     assert ext.versionBuildNumber != null
 
     ext.repo = org.ajoberstar.grgit.Grgit.open(dir: gitDir)
-    ext.repoUrl = ext.repo?.remote.list()[0].url
-
-    def repoUrl = repo.remote.list().collect { remote ->
-        def url = remote.url
-        def gitPostfix = url.indexOf(".git")
-        return url.substring(url.indexOf(":") + 1, gitPostfix == -1 ? url.length() : gitPostfix)
-    }.unique(false).getAt(0)
-    println repoUrl
-
+    ext.repoUrl = null
+    for(remote in repo.remote.list()) {
+        if(ext.repoUrl==null || remote.name=='origin') {
+            def url = remote.url
+            def gitPostfix = url.indexOf(".git")
+            ext.repoUrl = url.substring(url.indexOf(":") + 1, gitPostfix == -1 ? url.length() : gitPostfix)
+        }
+    }
 
     assert gradle.rootProject.ext.r_user != null
     assert gradle.rootProject.ext.r_pwd != null
@@ -296,12 +313,25 @@ allprojects {
         mavenCentral()
 
         if (project.snapshotSuffix) {
-
-
-
-            if(ext.versionBuildNumber == '0') {
+            if(gradle.rootProject.ext.versionBuildNumber == '0') {
                 // Enable local Maven repositories if build is not running in Jenkins
                 mavenLocal()
+            }
+            if(gradle.rootProject.ext.versionBuildNumber != '0' && System.getenv('AF_INT_ENV')) {
+                def intEnv = System.getenv('AF_INT_ENV').toLowerCase()
+                println "ETF-BDA: Using "+intEnv+" repository"
+                maven {
+                    url "https://services.interactive-instruments.de/etfdev-af/"+intEnv
+                    credentials {
+                        username gradle.rootProject.ext.r_user
+                        password gradle.rootProject.ext.r_pwd
+                    }
+                    content {
+                        includeGroupByRegex "de\\.interactive_instruments\\.*"
+                    }
+                }
+            }else{
+                println "ETF-BDA: Using SNAPSHOT repository"
             }
             maven {
                 url "https://services.interactive-instruments.de/etfdev-af/snapshot"
@@ -309,22 +339,9 @@ allprojects {
                     username gradle.rootProject.ext.r_user
                     password gradle.rootProject.ext.r_pwd
                 }
-            }
-            if(ext.versionBuildNumber != '0' && System.getenv('AF_INT_ENV')) {
-                def intEnv = System.getenv('AF_INT_ENV').toLowerCase()
-                def branch = System.getenv('BRANCH_NAME')
-                def changeId = System.getenv('CHANGE_ID')
-
-                println "ETF-BDA: Using "+intEnv+" repository for "+System.getenv('CHANGE_AUTHOR_EMAIL')
-                maven {
-                    url "https://services.interactive-instruments.de/etfdev-af/"+intEnv
-                    credentials {
-                        username gradle.rootProject.ext.r_user
-                        password gradle.rootProject.ext.r_pwd
-                    }
+                content {
+                    includeGroupByRegex "de\\.interactive_instruments\\.*"
                 }
-            }else{
-                println "ETF-BDA: Using SNAPSHOT repository"
             }
         } else {
             println "ETF-BDA: Using RELEASE repository"
@@ -334,6 +351,9 @@ allprojects {
                     username gradle.rootProject.ext.r_user
                     password gradle.rootProject.ext.r_pwd
                 }
+                content {
+                    includeGroupByRegex "de\\.interactive_instruments\\.*"
+                }
             }
         }
     }
@@ -342,25 +362,26 @@ allprojects {
     targetCompatibility = 1.8
 
     if(project.hasProperty("compileJava")) {
-      [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+        [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
     }
     if(project.hasProperty("compileGroovy")) {
-      [compileGroovy, compileGroovy]*.options*.encoding = 'UTF-8'
+        [compileGroovy, compileGroovy]*.options*.encoding = 'UTF-8'
     }
 
     if (gradle.rootProject.ext.qualityReports) {
         /////////////////////////////////////
-        // STATIC CODE ANALYSIS - FINDBUGS //
+        // STATIC CODE ANALYSIS - SPOTBUGS //
         /////////////////////////////////////
-        apply plugin: 'findbugs'
-        findbugs {
-            toolVersion = "3.0.1"
+        apply plugin: com.github.spotbugs.SpotBugsPlugin
+        spotbugs {
+            toolVersion = "3.1.12"
             ignoreFailures = true
-            reportsDir = file("$project.buildDir/reports/findbugs")
+            reportsDir = file("$project.buildDir/reports/spotbugs")
             effort = "max"
             reportLevel = "high"
         }
-        findbugsMain {
+        // see https://github.com/spotbugs/spotbugs-gradle-plugin/issues/95
+        tasks.withType(com.github.spotbugs.SpotBugsTask) {
             reports {
                 xml.enabled = false
                 html.enabled = true
@@ -396,20 +417,6 @@ allprojects {
                 html.enabled = true
             }
         }
-
-        //////////////////////////////////////
-        // DESIGN QUALITY METRICS - JDEPEND //
-        //////////////////////////////////////
-        apply plugin: 'jdepend'
-        jdepend {
-            reportsDir = file("$project.buildDir/reports/jdepend")
-        }
-        jdependMain {
-            reports {
-                xml.enabled false
-                text.enabled true
-            }
-        }
     }
 
     ////////////
@@ -418,8 +425,15 @@ allprojects {
     uploadArchives {
         repositories {
             mavenDeployer {
-                snapshotRepository(url: "http://services.interactive-instruments.de/etfdev-af/snapshot") {
-                    authentication(userName: gradle.rootProject.ext.r_user, password: gradle.rootProject.ext.r_pwd)
+                if(gradle.rootProject.ext.versionBuildNumber != '0' && System.getenv('AF_INT_ENV')) {
+                    def intEnv = System.getenv('AF_INT_ENV').toLowerCase()
+                    snapshotRepository(url: "https://services.interactive-instruments.de/etfdev-af/"+intEnv) {
+                        authentication(userName: gradle.rootProject.ext.r_user, password: gradle.rootProject.ext.r_pwd)
+                    }
+                }else{
+                    snapshotRepository(url: "http://services.interactive-instruments.de/etfdev-af/snapshot") {
+                        authentication(userName: gradle.rootProject.ext.r_user, password: gradle.rootProject.ext.r_pwd)
+                    }
                 }
                 repository(url: "http://services.interactive-instruments.de/etfdev-af/release") {
                     authentication(userName: gradle.rootProject.ext.r_user, password: gradle.rootProject.ext.r_pwd)
@@ -519,21 +533,28 @@ allprojects {
         java {
             target spotlessJavaSrcFiles
             licenseHeaderFile rootProject.file("./build/gradle/${project.licenseHeaderName}-header.java")
+            eclipse().configFile rootProject.file('./build/gradle/etf.eclipseformat.xml')
             importOrder(['java', 'javax', 'com', 'org', 'de'])
-            eclipseFormatFile rootProject.file('./build/gradle/etf.eclipseformat.xml')
-            trimTrailingWhitespace()
-            // endWithNewline()
-
+            removeUnusedImports()
             custom 'Lambda fix', { it.replace('} )', '})').replace('} ,', '},') }
+
+            indentWithSpaces(4)
+            trimTrailingWhitespace()
+            endWithNewline()
         }
 
         format 'groovy', {
             target '**/*.groovy'
             licenseHeaderFile rootProject.file("./build/gradle/${project.licenseHeaderName}-header.java"), "package "
+
+            indentWithSpaces(4)
+            trimTrailingWhitespace()
+            endWithNewline()
         }
 
         format 'misc', {
             target '**/*.md', '**/*.gitignore'
+
             indentWithTabs()
             trimTrailingWhitespace()
             endWithNewline()
@@ -566,7 +587,7 @@ allprojects {
             versionProperties = []
             buildTasks = ['build']
             versionPatterns = [
-                    /(\d+)([^\d]*$)/: { Matcher m, Project p -> m.replaceAll("${(m[0][1] as int) + 1}${m[0][2]}") }
+                    /(\d+)([^\d]*$)/: { Matcher m, Project p -> m.replaceAll("${(m[0][1] as int) + 1}${m[0][2]}-SNAPSHOT") }
             ]
 
             git {
@@ -574,6 +595,7 @@ allprojects {
                 pushToRemote = 'origin'
                 // skip pre-commit hook
                 pushOptions = ["--no-verify"]
+                signTag = true
             }
         }
 
