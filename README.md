@@ -20,7 +20,7 @@ buildscript {
 			}}
 	}
 	dependencies {
-		classpath group: 'de.interactive_instruments.bda', name: 'etf-bda', version: '[1.0.28,1.0.99]'
+		classpath group: 'de.interactive_instruments.bda', name: 'etf-bda', version: '[2.0.0,2.0.99]'
 	}
 	dependencies {
 		ant.unjar src: configurations.classpath.files.find {it.path.contains('etf')}, dest: 'build/gradle'
@@ -86,3 +86,4 @@ The following plugins are used:
 ## Breaking changes
 
 - [VersionEye](https://blog.versioneye.com/2017/10/19/versioneye-sunset-process/) has been removed in 1.0.26
+- [JDepend](https://docs.gradle.org/current/userguide/jdepend_plugin.html) has been removed in 2.0.0
